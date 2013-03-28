@@ -649,6 +649,18 @@ define(function LiveDevelopment(require, exports, module) {
                 }
             } else {
                 var readyPromise = _serverProvider.readyToServe();
+                // Install a request filter for the current document. In the future,
+                // we need to install filters for *all* files that need to be instrumented.
+                _serverProvider.setRequestFilter(
+                    [ProjectManager.makeProjectRelativeIfPossible(doc.file.fullPath)]
+                );
+                $(_serverProvider).on("request", function (event, request) {
+                    HTMLInstrumentaion.scanDocument(doc);
+                    var html = HTMLInstrumentaion.generateInstrumentedHTML(doc);
+                    
+                    request.send({ body: html });
+                });
+                
                 if (!readyPromise) {
                     showLiveDevServerNotReadyError();
                 } else {
