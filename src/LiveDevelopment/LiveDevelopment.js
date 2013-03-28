@@ -560,11 +560,11 @@ define(function LiveDevelopment(require, exports, module) {
             if (_serverProvider) {
                 // Install a request filter for the current document. In the future,
                 // we need to install filters for *all* files that need to be instrumented.
+                HTMLInstrumentaion.scanDocument(doc);
                 _serverProvider.setRequestFilterPaths(
                     ["/" + ProjectManager.makeProjectRelativeIfPossible(doc.file.fullPath)]
                 );
                 $(_serverProvider).on("request", function (event, request) {
-                    HTMLInstrumentaion.scanDocument(doc);
                     var html = HTMLInstrumentaion.generateInstrumentedHTML(doc);
                     
                     request.send({ body: html });
