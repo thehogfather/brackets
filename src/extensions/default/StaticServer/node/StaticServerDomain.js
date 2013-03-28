@@ -29,7 +29,12 @@ maxerr: 50, node: true */
     "use strict";
     
     var http    = require("http"),
-        connect = require("connect");
+        connect = require("connect"),
+        utils   = require("connect/lib/utils"),
+        mime    = require("connect/node_modules/send/node_modules/mime"),
+        parse   = utils.parseUrl;
+    
+    var _domainManager;
 
     /**
      * When Chrome has a css stylesheet replaced over live development,
@@ -54,6 +59,42 @@ maxerr: 50, node: true */
     
     /**
      * @private
+     * @type {Object.<string, {Object.<string, http.ServerResponse>}}
+     * A map from root paths to its request/response mapping.
+     */
+    var _requests = {};
+    
+    /**
+     * @private
+     * @type {Object.<string, {Object.<string>}}
+     * A map from root paths to relative paths to rewrite
+     */
+    var _rewritePaths = {};
+
+    var PATH_KEY_PREFIX = "LiveDev_";
+    
+    /**
+     * @private
+     * Removes trailing forward slash for the project root absolute path
+     * @param {string} path Absolute path for a server
+     * @returns {string}
+     */
+    function normalizeRootPath(path) {
+        return (path.lastIndexOf("/") === path.length - 1) ? path.slice(0, -1) : path;
+    }
+    
+    /**
+     * @private
+     * Generates a key based on a server's absolute path
+     * @param {string} path Absolute path for a server
+     * @returns {string}
+     */
+    function getPathKey(path) {
+        return PATH_KEY_PREFIX + normalizeRootPath(path);
+    }
+    
+    /**
+     * @private
      * Helper function to create a new server.
      * @param {string} path The absolute path that should be the document root
      * @param {function(?string, ?httpServer)} cb Callback function that receives
@@ -61,8 +102,16 @@ maxerr: 50, node: true */
      *    was an error). 
      */
     function _createServer(path, createCompleteCallback) {
+        var server,
+            app,
+            address,
+            pathKey = getPathKey(path);
+
+        // create a new map for this server's requests
+        _requests[pathKey] = {};
+        
         function requestRoot(server, cb) {
-            var address = server.address();
+            address = server.address();
             
             // Request the root file from the project in order to ensure that the
             // server is actually initialized. If we don't do this, it seems like
@@ -78,13 +127,55 @@ maxerr: 50, node: true */
             });
         }
         
-        var app = connect();
+        function rewrite(req, res, next) {
+            var location = {pathname: parse(req).pathname},
+                filepath = location.filepath = path + location.pathname,
+                hasListener = _rewritePaths[pathKey] && _rewritePaths[pathKey][location.pathname];
+            
+            // ignore most HTTP methods and files that we're not watching
+            if (("GET" !== req.method && "HEAD" !== req.method) || !hasListener) {
+                return next();
+            }
+            
+            // pause the request and wait for listeners to possibly respond
+            var pause = utils.pause(req);
+            
+            function resume() {
+                next();
+                pause.resume();
+            }
+            
+            // map request pathname to response callback
+            _requests[pathKey][location.pathname] = function (resData) {
+                // TODO other headers?
+                var type = mime.lookup(path);
+                var charset = mime.charsets.lookup(type);
+                res.setHeader("Content-Type", type + (charset ? "; charset=" + charset : ""));
+                res.end(resData.body);
+
+                // resume the HTTP ServerResponse
+                pause.resume();
+            };
+
+            location.hostname = address.address;
+            location.port = address.port;
+            location.root = path;
+            
+            // dispatch request event
+            _domainManager.emitEvent("staticServer", "request", [location]);
+            
+            // set a timeout if custom responses are not returned
+            setTimeout(resume, 5000);
+        }
+        
+        app = connect();
+        app.use(rewrite);
         // JSLint complains if we use `connect.static` because static is a
         // reserved word.
-        app.use(connect["static"](path, { maxAge: STATIC_CACHE_MAX_AGE }))
-            .use(connect.directory(path));
+        app.use(connect["static"](path, { maxAge: STATIC_CACHE_MAX_AGE }));
+        app.use(connect.directory(path));
 
-        var server = http.createServer(app);
+        server = http.createServer(app);
         server.listen(0, "127.0.0.1", function () {
             requestRoot(
                 server,
@@ -98,8 +189,6 @@ maxerr: 50, node: true */
             );
         });
     }
-
-    var PATH_KEY_PREFIX = "LiveDev_";
     
     /**
      * @private
@@ -116,7 +205,7 @@ maxerr: 50, node: true */
      */
     function _cmdGetServer(path, cb) {
         // Make sure the key doesn't conflict with some built-in property of Object.
-        var pathKey = PATH_KEY_PREFIX + path;
+        var pathKey = getPathKey(path);
         if (_servers[pathKey]) {
             cb(null, _servers[pathKey].address());
         } else {
@@ -125,6 +214,7 @@ maxerr: 50, node: true */
                     cb(err, null);
                 } else {
                     _servers[pathKey] = server;
+                    _rewritePaths[pathKey] = {};
                     cb(null, server.address());
                 }
             });
@@ -144,7 +234,7 @@ maxerr: 50, node: true */
      * @return {boolean} true if there was a server for that path, false otherwise
      */
     function _cmdCloseServer(path, cba) {
-        var pathKey = PATH_KEY_PREFIX + path;
+        var pathKey = getPathKey(path);
         if (_servers[pathKey]) {
             var serverToClose = _servers[pathKey];
             delete _servers[pathKey];
@@ -155,14 +245,51 @@ maxerr: 50, node: true */
     }
     
     /**
+     * @private
+     * Defines a set of paths from a server's root path to watch and fire "request" events for.
+     *
+     * @param {string} path The absolute path whose server we should watch
+     * @param {Array.<string>} paths An array of root-relative paths to watch.
+     *     Each path should begin with a forward slash "/".
+     */
+    function _cmdSetRequestFilter(root, paths) {
+        var rootPath = normalizeRootPath(root),
+            pathKey  = getPathKey(root),
+            rewritePaths = _rewritePaths[pathKey];
+        
+        paths.forEach(function (path) {
+            path = (path.indexOf("/") === 0) ? path : "/" + path;
+            rewritePaths[path] = root + path;
+        });
+    }
+    
+    /**
+     * @private
+     * Overrides the file content response from static middleware with
+     * the provided response data.
+     *
+     * @param {string} path The absolute path of the server
+     * @param {string} root The relative path of the file beginning with a forward slash "/"
+     * @param {Object} resData Response data to use
+     */
+    function _cmdWriteResponse(root, path, resData) {
+        var pathKey  = getPathKey(root),
+            callback = _requests[pathKey][path];
+
+        callback(resData);
+    }
+    
+    /**
      * Initializes the StaticServer domain with its commands.
      * @param {DomainManager} domainManager The DomainManager for the server
      */
     function init(domainManager) {
+        _domainManager = domainManager;
+        
         if (!domainManager.hasDomain("staticServer")) {
             domainManager.registerDomain("staticServer", {major: 0, minor: 1});
         }
-        domainManager.registerCommand(
+        _domainManager.registerCommand(
             "staticServer",
             "getServer",
             _cmdGetServer,
@@ -179,7 +306,7 @@ maxerr: 50, node: true */
                 description: "hostname (stored in 'address' parameter), port, and socket type (stored in 'family' parameter) for the server. Currently, 'family' will always be 'IPv4'."
             }]
         );
-        domainManager.registerCommand(
+        _domainManager.registerCommand(
             "staticServer",
             "closeServer",
             _cmdCloseServer,
@@ -194,6 +321,54 @@ maxerr: 50, node: true */
                 name: "result",
                 type: "boolean",
                 description: "indicates whether a server was found for the specific path then closed"
+            }]
+        );
+        _domainManager.registerCommand(
+            "staticServer",
+            "setRequestFilter",
+            _cmdSetRequestFilter,
+            false,
+            "Rewrite response for a given path from.",
+            [{
+                name: "root",
+                type: "string",
+                description: "absolute filesystem path for root of server"
+            }],
+            [{
+                name: "paths",
+                type: "Array",
+                description: "path to notify"
+            }]
+        );
+        _domainManager.registerCommand(
+            "staticServer",
+            "writeResponse",
+            _cmdWriteResponse,
+            false,
+            "Rewrite response for a given path from.",
+            [{
+                name: "root",
+                type: "string",
+                description: "absolute filesystem path for root of server"
+            }],
+            [{
+                name: "path",
+                type: "string",
+                description: "path to rewrite"
+            }],
+            [{
+                name: "response",
+                type: "{body: string, headers: Array}",
+                description: "TODO"
+            }]
+        );
+        _domainManager.registerEvent(
+            "staticServer",
+            "request",
+            [{
+                name: "location",
+                type: "{filepath: string, host: string, hostname: string, port: number, pathname: string, root: string}",
+                description: "request path"
             }]
         );
     }

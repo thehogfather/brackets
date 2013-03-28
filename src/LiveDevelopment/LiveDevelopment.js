@@ -638,6 +638,7 @@ define(function LiveDevelopment(require, exports, module) {
 
         } else {
             _serverProvider = LiveDevServerManager.getProvider(doc.file.fullPath);
+            
             if (!exports.config.experimental && !_serverProvider) {
                 if (FileUtils.isServerHtmlFileExt(doc.extension)) {
                     showNeedBaseUrlError();
