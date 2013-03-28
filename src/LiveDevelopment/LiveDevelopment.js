@@ -556,6 +556,21 @@ define(function LiveDevelopment(require, exports, module) {
             var interstitialUrl = launcherUrl + "?" + encodeURIComponent(targetUrl);
 
             _setStatus(STATUS_CONNECTING);
+            
+            if (_serverProvider) {
+                // Install a request filter for the current document. In the future,
+                // we need to install filters for *all* files that need to be instrumented.
+                _serverProvider.setRequestFilterPaths(
+                    ["/" + ProjectManager.makeProjectRelativeIfPossible(doc.file.fullPath)]
+                );
+                $(_serverProvider).on("request", function (event, request) {
+                    HTMLInstrumentaion.scanDocument(doc);
+                    var html = HTMLInstrumentaion.generateInstrumentedHTML(doc);
+                    
+                    request.send({ body: html });
+                });
+            }
+            
             Inspector.connectToURL(interstitialUrl).done(result.resolve).fail(function onConnectFail(err) {
                 if (err === "CANCEL") {
                     result.reject(err);
@@ -649,17 +664,6 @@ define(function LiveDevelopment(require, exports, module) {
                 }
             } else {
                 var readyPromise = _serverProvider.readyToServe();
-                // Install a request filter for the current document. In the future,
-                // we need to install filters for *all* files that need to be instrumented.
-                _serverProvider.setRequestFilter(
-                    [ProjectManager.makeProjectRelativeIfPossible(doc.file.fullPath)]
-                );
-                $(_serverProvider).on("request", function (event, request) {
-                    HTMLInstrumentaion.scanDocument(doc);
-                    var html = HTMLInstrumentaion.generateInstrumentedHTML(doc);
-                    
-                    request.send({ body: html });
-                });
                 
                 if (!readyPromise) {
                     showLiveDevServerNotReadyError();
