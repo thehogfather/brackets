@@ -60,6 +60,10 @@ define(function (require, exports, module) {
         return NativeProxy.send("fs", "cwd", callback);
     }
 
+    function makedir (path, mode, callback) {
+        return NativeProxy.send("fs", "mkdir", path, mode, callback);
+    }
+
     exports.NO_ERROR = NO_ERROR;
     exports.ERR_UNKNOWN = ERR_UNKNOWN;
     exports.ERR_INVALID_PARAMS = ERR_INVALID_PARAMS;
@@ -78,4 +82,5 @@ define(function (require, exports, module) {
     exports.chmod = chmod;
     exports.unlink = unlink;
     exports.cwd = cwd;
+    exports.makedir = makedir;
 });

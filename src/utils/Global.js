@@ -76,8 +76,6 @@ define(function (require, exports, module) {
     // TODO: (issue #266) load conditionally
     global.brackets.shellAPI = require("utils/ShellAPI");
     
-    global.brackets.inBrowser = !global.brackets.hasOwnProperty("fs");
-    
     if (global.navigator.platform === "MacIntel" || global.navigator.platform === "MacPPC") {
         global.brackets.platform = "mac";
     } else if (global.navigator.platform.indexOf("Linux") >= 0) {

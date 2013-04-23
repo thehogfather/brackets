@@ -43,14 +43,36 @@ define(function (require, exports, module) {
         console.log("Not implemented in NativeProxy: app.showExtensionsFolder()", arguments);
     }
 
+    function getApplicationSupportDirectory() {
+        console.log("Not implemented in NativeProxy: app.getApplicationSupportDirectory()", arguments);
+        return ".";
+    }
+
+    function addMenu() {
+        console.log("Not implemented in NativeProxy: app.addMenu()", arguments);
+    }
+
+    function addMenuItem() {
+        console.log("Not implemented in NativeProxy: app.addMenuItem()", arguments);
+    }
+
+    function getNodeState(callback) {
+        console.log("Not implemented in NativeProxy: app.getNodeState()", arguments);
+        callback(-2);
+    }
+
     exports.language = window.localStorage.getItem("locale") || navigator.language;
 
-    exports.quit = quit;
-    exports.abortQuit = abortQuit;
-    exports.showDeveloperTools = showDeveloperTools;
-    exports.getElapsedMilliseconds = getElapsedMilliseconds;
-    exports.openLiveBrowser = openLiveBrowser;
-    exports.closeLiveBrowser = closeLiveBrowser;
-    exports.openURLInDefaultBrowser = openURLInDefaultBrowser;
-    exports.showExtensionsFolder = showExtensionsFolder;
+    exports.quit                            = quit;
+    exports.abortQuit                       = abortQuit;
+    exports.showDeveloperTools              = showDeveloperTools;
+    exports.getElapsedMilliseconds          = getElapsedMilliseconds;
+    exports.openLiveBrowser                 = openLiveBrowser;
+    exports.closeLiveBrowser                = closeLiveBrowser;
+    exports.openURLInDefaultBrowser         = openURLInDefaultBrowser;
+    exports.showExtensionsFolder            = showExtensionsFolder;
+    exports.getApplicationSupportDirectory  = getApplicationSupportDirectory;
+    exports.addMenu                         = addMenu;
+    exports.addMenuItem                     = addMenuItem;
+    exports.getNodeState                    = getNodeState;
 });
