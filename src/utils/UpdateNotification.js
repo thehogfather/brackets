@@ -116,6 +116,11 @@ define(function (require, exports, module) {
         if ((new Date()).getTime() > _lastInfoURLFetchTime + (1000 * 60 * 60 * 24)) {
             fetchData = true;
         }
+
+        // Never fetch from inside the browser
+        if (brackets.inBrowser) {
+            fetchData = false;
+        }
         
         if (fetchData) {
             $.ajax(_versionInfoURL, {
@@ -264,6 +269,10 @@ define(function (require, exports, module) {
         
         _getUpdateInformation(force || usingOverrides, usingOverrides)
             .done(function (versionInfo) {
+                if (!versionInfo) {
+                    return;
+                }
+                
                 // Get all available updates
                 var allUpdates = _stripOldVersionInfo(versionInfo, _buildNumber);
                 
