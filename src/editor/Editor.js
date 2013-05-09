@@ -1000,7 +1000,7 @@ define(function (require, exports, module) {
             this._codeMirror.scrollIntoView(pos);
         }
 
-        inlineWidget.info = this._codeMirror.addLineWidget(pos.line, inlineWidget.htmlContent,
+        inlineWidget.info = this._codeMirror.addLineWidget(pos.line, inlineWidget.$outerWrapper.get(0),
                                                            { coverGutter: true, noHScroll: true });
         CodeMirror.on(inlineWidget.info.line, "delete", function () {
             self._removeInlineWidgetInternal(inlineWidget);
@@ -1010,6 +1010,12 @@ define(function (require, exports, module) {
 
         // Callback to widget once parented to the editor
         inlineWidget.onAdded();
+
+        var removeAnimation = function () {
+            inlineWidget.$outerWrapper.removeClass("animating");
+            inlineWidget.$outerWrapper.off("webkitTransitionEnd", removeAnimation);
+        };
+        inlineWidget.$outerWrapper.on("webkitTransitionEnd", removeAnimation);
     };
     
     /**
@@ -1029,11 +1035,16 @@ define(function (require, exports, module) {
      * @param {number} inlineWidget The widget to remove.
      */
     Editor.prototype.removeInlineWidget = function (inlineWidget) {
-        var lineNum = this._getInlineWidgetLineNumber(inlineWidget);
+        var lineNum = this._getInlineWidgetLineNumber(inlineWidget),
+            self = this;
         
-        this._codeMirror.removeLineWidget(inlineWidget.info);
-        this._removeInlineWidgetInternal(inlineWidget);
-        inlineWidget.onClosed();
+        inlineWidget.$outerWrapper.addClass("animating")
+            .on("webkitTransitionEnd", function () {
+                self._codeMirror.removeLineWidget(inlineWidget.info);
+                self._removeInlineWidgetInternal(inlineWidget);
+                inlineWidget.onClosed();
+            })
+            .height(0);
     };
     
     /**
@@ -1105,6 +1116,10 @@ define(function (require, exports, module) {
      * @param {boolean} ensureVisible Whether to scroll the entire widget into view.
      */
     Editor.prototype.setInlineWidgetHeight = function (inlineWidget, height, ensureVisible) {
+        function setOuterHeight() {
+            inlineWidget.$outerWrapper.height(height);
+        }
+
         var self = this,
             node = inlineWidget.htmlContent,
             oldHeight = (node && $(node).height()) || 0,
@@ -1115,9 +1130,16 @@ define(function (require, exports, module) {
         // min-height if they want.
         if (changed || !node.style.height) {
             $(node).height(height);
-
+            
+            // If we're animating, set the wrapper's height on a timeout so the layout is finished before we animate.
+            if (inlineWidget.$outerWrapper.hasClass("animating")) {
+                window.setTimeout(setOuterHeight, 0);
+            } else {
+                setOuterHeight();
+            }
             if (isAttached) {
-                // Notify CodeMirror for the height change
+                // Notify CodeMirror for the height change. Seems to be okay to do this before
+                // the animation completes.
                 inlineWidget.info.changed();
             }
         }

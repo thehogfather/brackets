@@ -39,11 +39,15 @@ define(function (require, exports, module) {
     function InlineWidget() {
         var self = this;
         
-        // create the outer wrapper div
+        // create the parent div that we animate open and closed
+        this.$outerWrapper = $("<div class='inline-widget-wrapper animating'/>");
+        
+        // create the main wrapper div
         this.htmlContent = window.document.createElement("div");
         this.$htmlContent = $(this.htmlContent).addClass("inline-widget");
         this.$htmlContent.append("<div class='shadow top' />")
-            .append("<div class='shadow bottom' />");
+            .append("<div class='shadow bottom' />")
+            .appendTo(this.$outerWrapper);
         
         this.$htmlContent.on("keydown", function (e) {
             if (e.keyCode === KeyEvent.DOM_VK_ESCAPE) {
@@ -52,6 +56,7 @@ define(function (require, exports, module) {
             }
         });
     }
+    InlineWidget.prototype.$outerWrapper = null;
     InlineWidget.prototype.htmlContent = null;
     InlineWidget.prototype.$htmlContent = null;
     InlineWidget.prototype.id = null;

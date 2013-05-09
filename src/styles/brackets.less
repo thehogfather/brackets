@@ -535,7 +535,8 @@ a, img {
 
 /* Styles for inline editors */
 .inline-widget {
-    background-color:   @inline-background-color-1;
+    position: relative;
+    background-color: @inline-background-color-1;
     min-width: 250px;
     cursor: default;
     
@@ -595,6 +596,16 @@ a, img {
         .CodeMirror-linenumbers {
             background-color: @inline-background-color-1;
         }
+    }
+}
+
+.inline-widget-wrapper {
+    position: relative;
+    overflow: hidden;
+
+    &.animating {
+        -webkit-transition: height 0.15s ease-out;
+        transition: height 0.15s ease-out;
     }
 }
 
