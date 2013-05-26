@@ -237,6 +237,16 @@ define(function JSDocumentModule(require, exports, module) {
                                     // Mark the newly instrumented function in the editor.
                                     MarkedTextTracker.markText(editor, childRanges, RANGE_MARK_TYPE, false);
                                     
+                                    if (!newFunctionInstr.name) {
+                                        // TODO: SUPER HACK. Look backwards for an assignment. This should be handled by
+                                        // the instrumentation... Only works if the var is declared on the same line. STUPID
+                                        var line = editor._codeMirror.getRange({line: subRangeStart.line, ch: 0}, subRangeStart),
+                                            match = line.match(/\b([0-9A-Za-z_$]+)\s+=\s+$/);
+                                        if (match) {
+                                            newFunctionInstr.name = match[1];
+                                        }
+                                    }
+                                    
                                     // Push the new function definition to the browser in the correct scope.
                                     // TODO: is it possible for name to be null? Seems like it would be a syntax error, since
                                     // function expressions shouldn't be legal at the top level here.

@@ -92,7 +92,13 @@ define(function (require, exports, module) {
                         expect(result.nextId).toEqual(Number(match[2]));
                     }
                     if (fnName) {
-                        expect(result.name).toEqual(fnName);
+                        if (result.name) {
+                            expect(result.name).toEqual(fnName);
+                        } else if (result._lastName) {
+                            expect(result._lastName).toEqual(fnName);
+                        } else {
+                            expect("neither name nor last name was set").toBe(false);
+                        }
                     }
                 });
             }
@@ -143,6 +149,10 @@ define(function (require, exports, module) {
             it("should return null if source is invalid", function () {
                 testInstrument(JSInstrumentation.instrument, "invalid");
             });
+            
+            it("should figure out the name of a function assigned to a var", function () {
+                testInstrument(JSInstrumentation.instrument, "varFn", "callMe");
+            });
         });
         
         describe("Replacement", function () {
@@ -152,8 +162,13 @@ define(function (require, exports, module) {
                 expect(eval("'" + escaped + "'")).toEqual(escapeTest);
             });
             
-            it("should extract the body from the function's source", function () {
+            it("should extract the body from a function declaration", function () {
                 var src = "function foo(arg1, arg2) {console.log('this is the body');console.log('another statement');}";
+                expect(JSInstrumentation.getFunctionBody(src)).toEqualIgnoringWhitespace("console.log('this is the body');console.log('another statement');");
+            });
+            
+            it("should extract the body from a function expression", function () {
+                var src = "function (arg1, arg2) {console.log('this is the body');console.log('another statement');}";
                 expect(JSInstrumentation.getFunctionBody(src)).toEqualIgnoringWhitespace("console.log('this is the body');console.log('another statement');");
             });
             

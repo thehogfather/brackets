@@ -192,16 +192,26 @@ define(function (require, exports, module) {
      *     will start at 0.
      * @param {boolean=} skipOuter If true, will not instrument the outermost function, and will only return the
      *     instrumented body. In this case, parentId can be null. Default false.
+     * @param {string=} parentAssignedVar If set, this is the name of the immediate parent var being assigned to.
      * @return {{instrumented: string, name: string, nextId: number}} Object containing the instrumented source, the name
      *     of the instrumented function, and the next unused function ID, or null if there was a parse error.
      */
-    function instrumentFunction(src, rangeList, root, parentId, nextId, skipOuter) {
+    function instrumentFunction(src, rangeList, root, parentId, nextId, skipOuter, parentAssignedVar) {
         nextId = nextId || 0;
 
         try {
             root = root || acorn.parse(src, {locations: true});
         } catch (e) {
-            return null;
+            // Try again as a function expression. Note that in this case, the various offsets will
+            // be wrong with relation to the original src, but that should be okay since this must
+            // have been called without a root (so is only being used to instrument a standalone function).
+            // YUCK
+            try {
+                src = "(" + src + ")";
+                root = acorn.parse(src, {locations: true});
+            } catch (e2) {
+                return null;
+            }
         }
 
         // TODO: For some reason, the with() trick doesn't work if it's wrapped around a function defined as
@@ -251,7 +261,7 @@ define(function (require, exports, module) {
         }
         return {
             instrumented: instrumented,
-            name: (functionNode.type === "FunctionDeclaration" ? functionNode.id.name : null),
+            name: (functionNode.type === "FunctionDeclaration" ? functionNode.id.name : parentAssignedVar),
             nextId: nextId
         };
     }
@@ -279,6 +289,7 @@ define(function (require, exports, module) {
     
     //var _indent = 0;
     function instrument(src, rangeList, root, parentId, nextId, vars) {
+        var parentAssignedVar = null, _lastName = null;
         nextId = nextId || 0;
         
         try {
@@ -302,24 +313,38 @@ define(function (require, exports, module) {
         function walk(node) {
             //console.log(new Array(_indent).join("  ") + (Array.isArray(node) ? "[list]" : node.type) + " >");
             //_indent++;
-            var instrResult;
+            var instrResult, walkedChildren = false;
             
             if (vars && (node.type === "VariableDeclarator" || node.type === "FunctionDeclaration")) {
                 vars.push(node.id.name);
             }
             
-            if (Array.isArray(node)) {
-                node.forEach(function (child) {
-                    walk(child);
-                });
-            } else if (node.type === "FunctionDeclaration" || node.type === "FunctionExpression") {
-                instrResult = instrumentFunction(src, rangeList, node, parentId, nextId);
+            if (node.type === "FunctionDeclaration" || node.type === "FunctionExpression") {
+                instrResult = instrumentFunction(src, rangeList, node, parentId, nextId, false, parentAssignedVar);
                 instrumented += getSourceFromRange(src, srcPos, node.loc.start) + instrResult.instrumented;
                 nextId = instrResult.nextId;
+                _lastName = instrResult.name;
                 srcPos = node.loc.end;
-            } else {
-                walk(getChildNodes(node));
+                walkedChildren = true;
             }
+            
+            if (node.type === "VariableDeclarator") {
+                // TODO: handle ordinary assignments
+                parentAssignedVar = node.id.name;
+            } else if (!Array.isArray(node)) {
+                parentAssignedVar = null;            
+            }
+
+            if (!walkedChildren) {
+                if (Array.isArray(node)) {
+                    node.forEach(function (child) {
+                        walk(child);
+                    });
+                } else {
+                    walk(getChildNodes(node));
+                }
+            }
+            
             //_indent--;
             //console.log(new Array(_indent).join("  ") + "< " + (Array.isArray(node) ? "[list]" : node.type));
         }
@@ -339,7 +364,8 @@ define(function (require, exports, module) {
         }
         return {
             instrumented: instrumented,
-            nextId: nextId
+            nextId: nextId,
+            _lastName: _lastName // for unit testing only
         };
     }
     
@@ -362,7 +388,8 @@ define(function (require, exports, module) {
      * @param {string} The source of the body of the function, or null if the function is invalid.
      */
     function getFunctionBody(src) {
-        // TODO: doesn't work for function expressions
+        // Make sure we parse it as a function expression if necessary
+        src = "(" + src + ")";
         var root;
         try {
             root = acorn.parse(src, {locations: true});
