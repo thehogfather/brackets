@@ -810,5 +810,19 @@ strong {
 /* Type */
 
 code {
-  background-color: transparent;
+    background-color: transparent;
+}
+
+/* Overriding Bootstrap's bold properties */
+
+b,
+strong,
+dt,
+.label {
+    font-weight: @font-weight-semibold;
+}
+
+.alert-message a,
+.form-stacked label {
+    font-weight: @font-weight-semibold;
 }
