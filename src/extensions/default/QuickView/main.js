@@ -97,13 +97,13 @@ define(function (require, exports, module) {
             
             $previewContent.empty();
             $previewContainer.hide();
+            $previewContainer.removeClass("active");
+                        
             
         } else {
             window.clearTimeout(popoverState.hoverTimer);
         }
-        
         popoverState = null;
-        $previewContainer.removeClass("active");
     }
     
     function positionPreview(xpos, ypos, ybot) {
@@ -341,6 +341,7 @@ define(function (require, exports, module) {
                     var showHandler = function () {
                         // Hide the preview container until the image is loaded.
                         $previewContainer.hide();
+                                                    
                         
                         $previewContainer.find(".image-preview > img").on("load", function () {
                             $previewContent

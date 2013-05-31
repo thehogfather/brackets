@@ -1,8 +1,9 @@
 #quick-view-container {
     display: none;
-    -webkit-transition: opacity 1s ease-out;
-    opacity: 0; 
-    
+    -webkit-transition: opacity 0.15s  ease-in, -webkit-filter 0.1s;
+    -webkit-filter: blur(60px);
+    opacity: 0;
+                                            
     background: #e0e1e3;
     position: absolute;
     z-index: 5000;
@@ -13,12 +14,14 @@
     padding: 15px;
     text-align: center;
 
-    border-radius: 5px;
+    border-radius: 4px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.25), inset 0 0 0 1px #a6a6a6, inset 0 0 0 2px #ebedec;
 }
 
 #quick-view-container.active {
     opacity: 1;
+    -webkit-filter: blur(0px);
+    height: auto; 
 }
 
 #quick-view-container .preview-content {
