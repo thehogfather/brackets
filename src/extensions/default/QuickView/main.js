@@ -103,6 +103,7 @@ define(function (require, exports, module) {
         }
         
         popoverState = null;
+        $previewContainer.removeClass("active");
     }
     
     function positionPreview(xpos, ypos, ybot) {
@@ -116,16 +117,16 @@ define(function (require, exports, module) {
         left = Math.min(left, editorLeft + $editorHolder.width() - previewWidth - POPOVER_HORZ_MARGIN);
         
         if (top < 0) {
-            $previewContainer.removeClass("preview-bubble-above");
-            $previewContainer.addClass("preview-bubble-below");
+            $previewContainer.removeClass("preview-bubble-above active");
+            $previewContainer.addClass("preview-bubble-below active");
             top = ybot + POSITION_BELOW_OFFSET;
             $previewContainer.offset({
                 left: left,
                 top: top
             });
         } else {
-            $previewContainer.removeClass("preview-bubble-below");
-            $previewContainer.addClass("preview-bubble-above");
+            $previewContainer.removeClass("preview-bubble-below active");
+            $previewContainer.addClass("preview-bubble-above active");
             $previewContainer.offset({
                 left: left,
                 top: top - POINTER_TOP_OFFSET
