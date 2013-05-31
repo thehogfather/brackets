@@ -1,7 +1,8 @@
 #quick-view-container {
     display: none;
-    -webkit-transition: opacity 0.15s  ease-in, -webkit-filter 0.1s;
-    -webkit-filter: blur(60px);
+    -webkit-transition: opacity 0.2s  ease-in, -webkit-transform 0.2s, -webkit-transform-origin 0.2s;
+    -webkit-transform: scale(0);
+    -webkit-transform-origin: 0 0;
     opacity: 0;
                                             
     background: #e0e1e3;
@@ -20,7 +21,8 @@
 
 #quick-view-container.active {
     opacity: 1;
-    -webkit-filter: blur(0px);
+    -webkit-transform: scale(1);
+    -webkit-transform-origin: 50% 50%;
     height: auto; 
 }
 
