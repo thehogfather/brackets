@@ -12,7 +12,7 @@
     top: 40px;
     pointer-events: none;
     
-    padding: 15px;
+    padding: 10px;
     text-align: center;
 
     border-radius: 4px;
@@ -34,8 +34,8 @@
 
 
 #quick-view-container .color-swatch {
-    width: 100px;
-    height: 100px;
+    width: 40px;
+    height: 40px;
     background-size: 100%;
 }
 

@@ -51,7 +51,7 @@ define(function (require, exports, module) {
         HOVER_DELAY                 = 350,  // Time (ms) mouse must remain over a provider's matched text before popover appears
         POSITION_OFFSET             = 38,   // Distance between the bottom of the line and the bottom of the preview container
         POINTER_LEFT_OFFSET         = 17,   // Half of the pointer width, used to find the center of the pointer
-        POINTER_TOP_OFFSET          =  7,   // Pointer height, used to shift popover above pointer
+        POINTER_TOP_OFFSET          =  0,   // Pointer height, used to shift popover above pointer
         POSITION_BELOW_OFFSET       = 16,   // Amount to adjust to top position when the preview bubble is below the text
         POPOVER_HORZ_MARGIN         =  5;   // Horizontal margin
     
