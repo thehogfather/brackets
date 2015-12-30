@@ -137,7 +137,6 @@ define(function (require, exports, module) {
                         cachedRange = folds[lineNumber];
                         if (range && cachedRange && range.from.line === cachedRange.from.line &&
                                 range.to.line === cachedRange.to.line) {
-                            cm.foldCode(lineNumber, {range: folds[lineNumber]}, "fold");
                             result[lineNumber] = folds[lineNumber];
                         }
                     }
@@ -251,7 +250,7 @@ define(function (require, exports, module) {
           * @param {number} start the current position in the document
           */
         CodeMirror.registerHelper("fold", "auto", function (cm, start) {
-            var helpers = cm.getHelpers(start, "fold"), i, cur;
+            var helpers = cm.getHelpers(start, "fold"), i, range;
             //ensure mode helper is loaded if there is one
             var mode = cm.getMode().name;
             var modeHelper = CodeMirror.fold[mode];
@@ -259,8 +258,8 @@ define(function (require, exports, module) {
                 helpers.push(modeHelper);
             }
             for (i = 0; i < helpers.length; i++) {
-                cur = helpers[i](cm, start);
-                if (cur) { return cur; }
+                range = helpers[i](cm, start);
+                if (range && range.to.line - range.from.line >= prefs.getSetting("minFoldSize")) { return range; }
             }
         });
     }

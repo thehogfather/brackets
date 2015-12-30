@@ -38,6 +38,7 @@ define(function (require, exports, module) {
         Editor                  = brackets.getModule("editor/Editor").Editor,
         EditorManager           = brackets.getModule("editor/EditorManager"),
         ProjectManager          = brackets.getModule("project/ProjectManager"),
+        ViewStateManager        = brackets.getModule("view/ViewStateManager"),
         KeyBindingManager       = brackets.getModule("command/KeyBindingManager"),
         ExtensionUtils          = brackets.getModule("utils/ExtensionUtils"),
         Menus                   = brackets.getModule("command/Menus"),
@@ -78,20 +79,67 @@ define(function (require, exports, module) {
       * Restores the linefolds in the editor using values fetched from the preference store
       * Checks the document to ensure that changes have not been made (e.g., in a different editor)
       * to invalidate the saved line folds.
+      * Selection Folds are found by comparing the line folds in the preference store with the
+      * selection ranges in the viewState of the current document. Any selection range in the view state
+      * that is folded in the prefs will be folded. Unlike other fold range finder, the only validation
+      * on selection folds is to check that they satisfy the minimum fold range.
       * @param {Editor} editor  the editor whose saved line folds should be restored
       */
     function restoreLineFolds(editor) {
+        /**
+         * Checks if the range from and to Pos is the same as the selection start and end Pos
+         * @param   {Object}  range     {from, to} where from and to are CodeMirror.Pos objects
+         * @param   {Object}  selection {start, end} where start and end are CodeMirror.Pos objects
+         * @returns {Boolean} true if the range and selection span the same region and false otherwise
+         */
+        function rangeEqualsSelection(range, selection) {
+            return range.from.line === selection.start.line && range.from.ch === selection.start.ch &&
+                range.to.line === selection.end.line && range.to.ch === selection.end.ch;
+        }
+
+        /**
+         * Checks if the range is equal to one of the selections in the viewState
+         * @param   {Object}  range     {from, to} where from and to are CodeMirror.Pos objects.
+         * @param   {Object}  viewState The current editor's ViewState object
+         * @returns {Boolean} true if the range is found in the list of selections or false if not.
+         */
+        function isInViewStateSelection(range, viewState) {
+            if (!viewState || !viewState.selections) {
+                return false;
+            }
+
+            return viewState.selections.some(function (selection) {
+                return rangeEqualsSelection(range, selection);
+            });
+        }
+
         var saveFolds = prefs.getSetting("saveFoldStates");
         if (!editor || !saveFolds) {
             return;
         }
+        var viewState = ViewStateManager.getViewState(editor.document.file);
         var cm = editor._codeMirror;
         var path = editor.document.file.fullPath;
         var folds = cm._lineFolds || prefs.getFolds(path);
-        cm._lineFolds = cm.getValidFolds(folds);
+        //separate out selection folds from non-selection folds
+        var nonSelectionFolds = {}, selectionFolds = {}, range;
+        Object.keys(folds).forEach(function (line) {
+            range = folds[line];
+            if (isInViewStateSelection(range, viewState)) {
+                selectionFolds[line] = range;
+            } else {
+                nonSelectionFolds[line] = range;
+            }
+        });
+        nonSelectionFolds = cm.getValidFolds(nonSelectionFolds);
+        //add the selection folds
+        Object.keys(selectionFolds).forEach(function (line) {
+            nonSelectionFolds[line] = selectionFolds[line];
+        });
+        cm._lineFolds = nonSelectionFolds;
         prefs.setFolds(path, cm._lineFolds);
         Object.keys(cm._lineFolds).forEach(function (line) {
-            cm.foldCode(Number(line));
+            cm.foldCode(Number(line), {range: cm._lineFolds[line]});
         });
     }
 
@@ -368,6 +416,7 @@ define(function (require, exports, module) {
         KeyBindingManager.addBinding(EXPAND_ALL, [ {key: expandAllKey}, {key: expandAllKeyMac, platform: "mac"} ]);
         KeyBindingManager.addBinding(COLLAPSE, collapseKey);
         KeyBindingManager.addBinding(EXPAND, expandKey);
+
 
         // Add gutters & restore saved expand/collapse state in all currently open editors
         Editor.forEveryEditor(function (editor) {

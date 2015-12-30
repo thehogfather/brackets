@@ -35,23 +35,23 @@
   */
 define(function (require, exports, module) {
     "use strict";
-    
+
     var EventDispatcher = require("utils/EventDispatcher");
-    
-    
+
+
     /**
      * Map of all registered global commands
      * @type {Object.<commandID: string, Command>}
      */
     var _commands = {};
-    
+
     /**
      * Temporary copy of commands map for restoring after testing
      * TODO (issue #1039): implement separate require contexts for unit tests
      * @type {Object.<commandID: string, Command>}
      */
     var _commandsOriginal = {};
-    
+
     /**
      * Events:
      * - enabledStateChange
@@ -95,7 +95,7 @@ define(function (require, exports, module) {
                 reject();
             });
         }
-        
+
         var result = this._commandFn.apply(this, arguments);
         if (!result) {
             // If command does not return a promise, assume that it handled the
@@ -206,9 +206,9 @@ define(function (require, exports, module) {
 
         var command = new Command(name, id, commandFn);
         _commands[id] = command;
-        
+
         exports.trigger("commandRegistered", command);
-        
+
         return command;
     }
 
@@ -236,12 +236,12 @@ define(function (require, exports, module) {
 
         var command = new Command(null, id, commandFn);
         _commands[id] = command;
-        
+
         exports.trigger("commandRegistered", command);
-        
+
         return command;
     }
-    
+
     /**
      * Clear all commands for unit testing, but first make copy of commands so that
      * they can be restored afterward
@@ -258,7 +258,7 @@ define(function (require, exports, module) {
         _commands = _commandsOriginal;
         _commandsOriginal = {};
     }
-    
+
     /**
      * Retrieves a Command object by id
      * @param {string} id
@@ -267,7 +267,7 @@ define(function (require, exports, module) {
     function get(id) {
         return _commands[id];
     }
-    
+
     /**
      * Returns the ids of all registered commands
      * @return {Array.<string>}
@@ -284,14 +284,14 @@ define(function (require, exports, module) {
      */
     function execute(id) {
         var command = _commands[id];
-        
+
         if (command) {
             try {
                 exports.trigger("beforeExecuteCommand", id);
             } catch (err) {
                 console.error(err);
             }
-            
+
             return command.execute.apply(command, Array.prototype.slice.call(arguments, 1));
         } else {
             return new Promise(function (resolve, reject) {
@@ -299,7 +299,7 @@ define(function (require, exports, module) {
             });
         }
     }
-    
+
     EventDispatcher.makeEventDispatcher(exports);
 
     // Define public API
