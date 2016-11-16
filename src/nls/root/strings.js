@@ -21,9 +21,6 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define */
-
 define({
 
     /**
@@ -421,6 +418,7 @@ define({
     "CMD_SHOW_IN_EXPLORER"                : "Show in Explorer",
     "CMD_SHOW_IN_FINDER"                  : "Show in Finder",
     "CMD_SHOW_IN_OS"                      : "Show in OS",
+    "CMD_SWITCH_PANE_FOCUS"               : "Switch Pane Focus",
 
     // Help menu commands
     "HELP_MENU"                           : "Help",
@@ -506,6 +504,7 @@ define({
     "VIEW_TRUNCATED_DESCRIPTION"           : "View truncated description",
     // These must match the error codes in ExtensionsDomain.Errors.* :
     "INVALID_ZIP_FILE"                     : "The downloaded content is not a valid zip file.",
+    "MISSING_PACKAGE_JSON"                 : "The package has no package.json file.",
     "INVALID_PACKAGE_JSON"                 : "The package.json file is not valid (error was: {0}).",
     "MISSING_PACKAGE_NAME"                 : "The package.json file doesn't specify a package name.",
     "BAD_PACKAGE_NAME"                     : "{0} is an invalid package name.",
